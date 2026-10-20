@@ -147,3 +147,16 @@ exécution : IMPOSSIBLE ici (pas de Keycloak/PostgreSQL/Liberty : images Docker 
 === résultat global : VERT
 exit=0
 ```
+
+## C. Vérification sur la vraie stack (Dev Container de Michel, 2026-10-20 ~11:25)
+
+| Vérification | Comment | Résultat |
+|---|---|---|
+| `GET /health/ready` | navigateur intégré → `localhost:9080` | `{"status":"UP","checks":[{"name":"kanban-database","status":"UP"}]}` |
+| Compilation backend **contre les vraies API** | Maven 3.9.11 hors ligne + cache `~/.m2` de Michel (jakartaee-web-api 11.0.0, microprofile 7.1, resteasy-core 7.0.0.Final, JUnit 5.11.3), JDK 21 | `Compiling 20 source files` + `Compiling 4 source files` [release 21] : OK |
+| Tests JUnit backend | classes compilées par Maven, vrai RESTEasy 7.0.0 sur le classpath, lanceur JUnit Platform (surefire 3.5.x incomplet dans le cache, donc non exécutable hors ligne) | **27/27 verts** |
+| `scripts/test-sharing.sh` (56 contrôles) | même scénario rejoué en JavaScript dans le navigateur intégré, appels directs à `localhost:9080/api`, jetons Keycloak réels (`iss=http://localhost:8081/realms/kanban`) | **56 OK, 0 KO** |
+| Ex 13/14 (401 sans jeton, `/api/me` ×3, owner forcé, 403 JSON, admin, 404) | idem | **18 OK, 0 KO** |
+| Interface Angular (F1–F5, ex 09) en direct | non faite : le navigateur intégré bloque les sous-requêtes vers Keycloak (`ERR_BLOCKED_BY_CLIENT`) et l'extension Chrome n'était pas connectée | couverte par les 27 specs Karma (partie B) |
+
+Bug d'environnement trouvé pendant cette vérification : la copie Windows convertit les `.sh` en CRLF (`core.autocrlf`), ce qui casse `scripts/*.sh` sous bash (`$'\r': command not found`). Corrigé par `.gitattributes` (`*.sh text eol=lf`, commit `19ac06a`).
