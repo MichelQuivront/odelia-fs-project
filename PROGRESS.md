@@ -1,7 +1,7 @@
 # PROGRESS — odelia-fs-project
 
 Branche de travail : `complete-project` (créée depuis `main`, commit `faff700`).
-État : **inventaire initial terminé — en attente du « go »** (CLAUDE.md §2). Aucun fichier de code n'a été modifié.
+État : « go » reçu le 2026-10-20 (accès en écriture au dépôt accordé) ; exercices traités dans l'ordre 01 → 17.
 
 ## 1. Environnement
 
@@ -32,14 +32,14 @@ Conséquence : dans cette session, **impossible** de lancer PostgreSQL, Keycloak
 
 | # | Titre | Type | Déjà fait dans le code ? (preuve) | Statut |
 |---|---|---|---|---|
-| 01 | Inspect an HTTP Exchange | analyse | n/a (observation DevTools/curl de `/health/ready`) | ⏳ à faire (nécessite Liberty) |
-| 02 | Launch and Verify the Kanban Stack | analyse | n/a | ⏳ à faire (nécessite toute la stack) |
-| 03 | Trace a Kanban Request End to End | analyse | n/a — chaîne : `board-list.component.ts:44` → `board.service.ts:30` → `BoardResource.java:91-106` → `BoardRepository` | ⏳ à faire |
-| 04 | Inspect HTML and CSS | analyse | n/a — `board-list.component.html` / `.css` | ⏳ à faire (DevTools) |
-| 05 | Diagnose a Service Failure | analyse | n/a | ⏳ à faire (pannes à provoquer) |
-| 06 | Explore the Angular Application | analyse | n/a — `main.ts:5`, `app.config.ts:9-18`, `app.routes.ts:7-11` | ⏳ à faire |
-| 07 | Trace Angular Routing and API Calls | analyse | n/a — `proxy.conf.json:2-6`, `environment.ts:4`, `angular.json:70` | ⏳ à faire |
-| 08 | Observe Angular Authentication | analyse | n/a — `auth.service.ts:32-46`, `auth.guard.ts:20`, `auth.interceptor.ts:19-30` | ⏳ à faire |
+| 01 | Inspect an HTTP Exchange | analyse | n/a (observation DevTools/curl de `/health/ready`) | ✅ `answers/01` — code lu + observations partielles (stack non lançable ici) |
+| 02 | Launch and Verify the Kanban Stack | analyse | n/a | ✅ `answers/02` — code lu + observations partielles (stack non lançable ici) |
+| 03 | Trace a Kanban Request End to End | analyse | n/a — chaîne : `board-list.component.ts:44` → `board.service.ts:30` → `BoardResource.java:91-106` → `BoardRepository` | ✅ `answers/03` — code lu + observations partielles (stack non lançable ici) |
+| 04 | Inspect HTML and CSS | analyse | n/a — `board-list.component.html` / `.css` | ✅ `answers/04` — code lu + observations partielles (stack non lançable ici) |
+| 05 | Diagnose a Service Failure | analyse | n/a | ✅ `answers/05` — code lu + observations partielles (stack non lançable ici) |
+| 06 | Explore the Angular Application | analyse | n/a — `main.ts:5`, `app.config.ts:9-18`, `app.routes.ts:7-11` | ✅ `answers/06` — code lu + observations partielles (stack non lançable ici) |
+| 07 | Trace Angular Routing and API Calls | analyse | n/a — `proxy.conf.json:2-6`, `environment.ts:4`, `angular.json:70` | ✅ `answers/07` — code lu + observations partielles (stack non lançable ici) |
+| 08 | Observe Angular Authentication | analyse | n/a — `auth.service.ts:32-46`, `auth.guard.ts:20`, `auth.interceptor.ts:19-30` | ✅ `answers/08` — code lu + observations partielles (stack non lançable ici) |
 | 09 | Implement Board Rename | implémentation + test | **Partiel** : `BoardService.renameBoard` existe (`frontend/src/app/services/board.service.ts:34-36`), endpoint `PUT /api/boards/{id}` existe (`BoardResource.java:108-115`). **Aucune UI** de renommage (`board-list.component.html:25-36` n'a que Delete) et **aucun** `board-list.component.spec.ts` | ⏳ à implémenter |
 | 10 | Explore the Jakarta EE Backend | analyse | n/a — `pom.xml`, `server.xml`, `beans.xml`, `KanbanApplication.java:25-34` | ⏳ à faire |
 | 11 | Trace a JAX-RS Request | analyse | n/a — `BoardResource.java:91-106`, suppression `:117-128` | ⏳ à faire |
