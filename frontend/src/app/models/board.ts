@@ -23,3 +23,11 @@ export interface Card {
   position: number;
   createdAt?: string;
 }
+
+/** Mirrors com.odelia.kanban.entity.BoardMember: a user a board is shared with (never its owner). */
+export interface BoardMember {
+  id?: number;
+  boardId: number;
+  username: string;
+  createdAt?: string;
+}

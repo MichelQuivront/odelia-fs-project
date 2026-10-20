@@ -99,4 +99,8 @@
       }
     </div>
   }
+
+  @if (board(); as b) {
+    <app-board-members [board]="b" />
+  }
 </section>

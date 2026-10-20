@@ -3,12 +3,18 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { AuthService } from '../auth/auth.service';
 import { Board } from '../models/board';
 import { BoardService } from '../services/board.service';
 
 /**
- * Lists the boards, creates one, renames one inline, deletes one. Each board
- * name links to the drag-and-drop board detail view ({@code /boards/:id}).
+ * Lists the boards the user owns or is a member of, creates one, renames one
+ * inline, deletes one. Each board name links to the drag-and-drop board detail
+ * view ({@code /boards/:id}).
+ *
+ * Rename and Delete are owner-only on the backend (403 for a member), so they
+ * are only offered to the owner or an admin. Hiding them is a convenience, not
+ * the security boundary.
  */
 @Component({
   selector: 'app-board-list',
@@ -18,6 +24,7 @@ import { BoardService } from '../services/board.service';
 })
 export class BoardListComponent implements OnInit {
   private readonly boardService = inject(BoardService);
+  private readonly auth = inject(AuthService);
 
   readonly boards = signal<Board[]>([]);
   readonly loading = signal(false);
@@ -40,6 +47,16 @@ export class BoardListComponent implements OnInit {
 
   ngOnInit(): void {
     this.reload();
+  }
+
+  /** True when the signed-in user created the board (F1: the others are shared with them). */
+  isOwner(board: Board): boolean {
+    return board.owner === this.auth.username();
+  }
+
+  /** F5 - only the owner, or an admin, is offered Rename and Delete. */
+  canManage(board: Board): boolean {
+    return this.auth.isAdmin() || this.isOwner(board);
   }
 
   reload(): void {

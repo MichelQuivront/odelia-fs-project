@@ -100,3 +100,12 @@ button.danger {
   border-radius: 6px;
   padding: 0.6rem 0.8rem;
 }
+
+.badge-shared {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #3730a3;
+  white-space: nowrap;
+}

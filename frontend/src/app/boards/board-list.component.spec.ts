@@ -2,17 +2,28 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
+import { signal } from '@angular/core';
 
 import { BoardListComponent } from './board-list.component';
 import { routes } from '../app.routes';
+import { AuthService } from '../auth/auth.service';
 
 describe('BoardListComponent', () => {
   let http: HttpTestingController;
+  /** The signed-in user, swappable per test (stands in for keycloak-js). */
+  const auth = { username: signal<string | null>('alice'), isAdmin: signal(false) };
 
   beforeEach(async () => {
+    auth.username.set('alice');
+    auth.isAdmin.set(false);
     await TestBed.configureTestingModule({
       imports: [BoardListComponent],
-      providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()]
+      providers: [
+        provideRouter(routes),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AuthService, useValue: auth }
+      ]
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
   });
@@ -111,5 +122,45 @@ describe('BoardListComponent', () => {
     expect(component.editingBoardId()).toBe(1);
     expect(component.renameDraft).toBe('Taken');
     expect(component.boards().map(b => b.name)).toEqual(['Zebra', 'Apple']);
+  });
+
+  // ------------------------------------------------------------ exercise 17
+
+  /** alice owns "Mine"; "Theirs" is bob's board shared with alice. */
+  function loadedShared() {
+    const fixture = TestBed.createComponent(BoardListComponent);
+    fixture.detectChanges();
+    http.expectOne('/api/boards').flush([
+      { id: 1, name: 'Mine', owner: 'alice' },
+      { id: 2, name: 'Theirs', owner: 'bob' }
+    ]);
+    fixture.detectChanges();
+    const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('li.board'));
+    const text = (i: number) => rows[i].textContent ?? '';
+    return { fixture, rows, text };
+  }
+
+  it('F1 - lists shared boards and marks them as shared', () => {
+    const { rows, text } = loadedShared();
+    expect(rows.length).toBe(2);
+    expect(text(0)).not.toContain('shared with you');
+    expect(text(1)).toContain('shared with you');
+  });
+
+  it('F5 - hides Delete (and Rename) from a member, shows them to the owner', () => {
+    const { text } = loadedShared();
+    expect(text(0)).toContain('Delete');
+    expect(text(0)).toContain('Rename');
+    expect(text(1)).not.toContain('Delete');
+    expect(text(1)).not.toContain('Rename');
+  });
+
+  it('F5 - an admin keeps Delete and Rename on boards they do not own', () => {
+    auth.username.set('carol');
+    auth.isAdmin.set(true);
+    const { text } = loadedShared();
+    expect(text(0)).toContain('Delete');
+    expect(text(1)).toContain('Delete');
+    expect(text(1)).toContain('Rename');
   });
 });

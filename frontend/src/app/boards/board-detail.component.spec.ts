@@ -146,4 +146,20 @@ describe('BoardDetailComponent', () => {
     expect(draft.title).toBe('');
     expect(draft.description).toBe('');
   });
+
+  it('F2 - renders the members panel once the board is loaded', () => {
+    const fixture = TestBed.createComponent(BoardDetailComponent);
+    fixture.detectChanges();
+
+    http.expectOne('/api/boards/7').flush({ id: 7, name: 'Sprint 1', owner: 'alice' });
+    http.expectOne('/api/boards/7/lists').flush([]);
+    fixture.detectChanges();
+
+    http.expectOne('/api/boards/7/members').flush([{ id: 1, boardId: 7, username: 'bob' }]);
+    fixture.detectChanges();
+
+    const panel: HTMLElement = fixture.nativeElement.querySelector('app-board-members');
+    expect(panel).not.toBeNull();
+    expect(panel.textContent).toContain('bob');
+  });
 });
