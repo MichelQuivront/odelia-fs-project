@@ -77,6 +77,14 @@ button.danger {
   text-decoration: underline;
 }
 
+.rename input {
+  flex: 1;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font: inherit;
+}
+
 .meta {
   color: #64748b;
   font-size: 0.85rem;
