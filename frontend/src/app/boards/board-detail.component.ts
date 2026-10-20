@@ -13,6 +13,7 @@ import { forkJoin } from 'rxjs';
 
 import { Board, BoardList, Card } from '../models/board';
 import { BoardService } from '../services/board.service';
+import { BoardMembersComponent } from './board-members.component';
 
 /**
  * The real Kanban board for one board.
@@ -30,10 +31,13 @@ import { BoardService } from '../services/board.service';
  * column: clicking it opens a one-field composer (title only) that stays open so
  * several cards can be typed in a row. The description is filled in afterwards
  * through the inline card editor.
+ *
+ * Under the columns, {@link BoardMembersComponent} shows who the board is shared
+ * with (exercise 17).
  */
 @Component({
   selector: 'app-board-detail',
-  imports: [FormsModule, RouterLink, CdkDropListGroup, CdkDropList, CdkDrag],
+  imports: [FormsModule, RouterLink, CdkDropListGroup, CdkDropList, CdkDrag, BoardMembersComponent],
   templateUrl: './board-detail.component.html',
   styleUrl: './board-detail.component.css'
 })

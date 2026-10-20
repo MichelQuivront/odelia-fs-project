@@ -5,6 +5,9 @@ import jakarta.inject.Inject;
 import org.eclipse.microprofile.jwt.Claims;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
+import java.util.List;
+import java.util.Set;
+
 /**
  * The caller, as described by the bearer token.
  *
@@ -48,5 +51,15 @@ public class CurrentUser {
      */
     public boolean isAdmin() {
         return jwt.getGroups() != null && jwt.getGroups().contains(ADMIN);
+    }
+
+    /**
+     * The caller's realm roles, from the same validated {@code groups} claim that
+     * {@code @RolesAllowed} and {@link #isAdmin()} read. Sorted, so the JSON is
+     * deterministic; empty rather than null when the claim is missing.
+     */
+    public List<String> roles() {
+        Set<String> groups = jwt.getGroups();
+        return groups == null ? List.of() : groups.stream().sorted().toList();
     }
 }

@@ -22,18 +22,39 @@
     <ul class="board-list">
       @for (board of boards(); track board.id) {
         <li class="board">
-          <div class="board-row">
-            <a class="board-name" [routerLink]="['/boards', board.id]">
-              {{ board.name }}
-            </a>
-            <span class="meta">
-              {{ board.owner }}
-              @if (board.createdAt) {
-                · {{ board.createdAt | date: 'short' }}
+          @if (editingBoardId() === board.id) {
+            <form class="board-row rename" (ngSubmit)="saveRename(board)">
+              <input
+                #renameInput
+                name="renameDraft"
+                [(ngModel)]="renameDraft"
+                aria-label="New board name"
+                autocomplete="off"
+                maxlength="120"
+                (keydown.escape)="cancelRename()" />
+              <button type="submit" [disabled]="!renameDraft.trim() || renaming()">Save</button>
+              <button type="button" class="ghost" (click)="cancelRename()">Cancel</button>
+            </form>
+          } @else {
+            <div class="board-row">
+              <a class="board-name" [routerLink]="['/boards', board.id]">
+                {{ board.name }}
+              </a>
+              @if (!isOwner(board)) {
+                <span class="badge-shared">shared with you</span>
               }
-            </span>
-            <button class="danger" type="button" (click)="deleteBoard(board)">Delete</button>
-          </div>
+              <span class="meta">
+                {{ board.owner }}
+                @if (board.createdAt) {
+                  · {{ board.createdAt | date: 'short' }}
+                }
+              </span>
+              @if (canManage(board)) {
+                <button class="ghost" type="button" (click)="startRename(board)">Rename</button>
+                <button class="danger" type="button" (click)="deleteBoard(board)">Delete</button>
+              }
+            </div>
+          }
         </li>
       }
     </ul>

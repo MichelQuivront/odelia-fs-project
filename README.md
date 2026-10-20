@@ -63,7 +63,7 @@ or `admin` realm role — no token is a **401**, someone else's board is a **403
 
 | Method | Path                     | Description                                   |
 |--------|--------------------------|-----------------------------------------------|
-| GET    | `/api/boards`            | All boards, sorted by name                    |
+| GET    | `/api/boards`            | Own + shared boards by name (all, for admins) |
 | POST   | `/api/boards`            | Create a board (+ "To do"/"Doing"/"Done")     |
 | GET    | `/api/boards/{id}`       | One board                                     |
 | PUT    | `/api/boards/{id}`       | Rename a board                                |
@@ -79,6 +79,14 @@ or `admin` realm role — no token is a **401**, someone else's board is a **403
 | PUT    | `/api/cards/{id}`        | Edit a card's title / description             |
 | DELETE | `/api/cards/{id}`        | Delete a card                                 |
 | PATCH  | `/api/cards/{id}/move`   | Move a card: `{ "targetListId", "position" }` |
+| GET    | `/api/boards/{id}/members`            | Members of a board (owner, members, admin)   |
+| POST   | `/api/boards/{id}/members`            | Share: `{ "username": "bob" }` (owner/admin) |
+| DELETE | `/api/boards/{id}/members/{username}` | Unshare (owner/admin)                        |
+| GET    | `/api/me`                | The caller: `{ username, roles, admin }`      |
+
+A board is visible to its owner, to its members, and to admins. Members can
+work on columns and cards, but only the owner (or an admin) can rename or
+delete the board and manage its members.
 
 Also available and left open on purpose (ops endpoints, not user data):
 `/health/ready` (MicroProfile Health, checks PostgreSQL), `/openapi` and

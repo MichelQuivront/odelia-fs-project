@@ -1,0 +1,38 @@
+<section class="members">
+  <h3>Members</h3>
+
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+
+  <p class="muted">Owner: <strong>{{ board().owner }}</strong></p>
+
+  @if (loading()) {
+    <p class="muted">Loading members…</p>
+  } @else if (members().length === 0) {
+    <p class="muted">This board is not shared with anyone.</p>
+  } @else {
+    <ul class="member-list">
+      @for (member of members(); track member.username) {
+        <li class="member">
+          <span>{{ member.username }}</span>
+          @if (canManage()) {
+            <button class="danger" type="button" (click)="removeMember(member)">Remove</button>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (canManage()) {
+    <form class="add-member" (ngSubmit)="addMember()">
+      <input
+        name="newUsername"
+        [(ngModel)]="newUsername"
+        placeholder="Username to add"
+        autocomplete="off"
+        maxlength="120" />
+      <button type="submit" [disabled]="!newUsername.trim()">Add member</button>
+    </form>
+  }
+</section>
