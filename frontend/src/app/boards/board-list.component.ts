@@ -49,9 +49,19 @@ export class BoardListComponent implements OnInit {
     this.reload();
   }
 
-  /** True when the signed-in user created the board (F1: the others are shared with them). */
+  /** True when the signed-in user created the board. */
   isOwner(board: Board): boolean {
     return board.owner === this.auth.username();
+  }
+
+  /**
+   * F1 - the "shared with you" badge. For a regular user, `GET /api/boards`
+   * returns only owned and shared boards, so a board they don't own is one
+   * shared with them. An admin is listed every board, so "not mine" does not
+   * mean "shared with me" there: no badge, the owner column says whose it is.
+   */
+  isShared(board: Board): boolean {
+    return !this.auth.isAdmin() && !this.isOwner(board);
   }
 
   /** F5 - only the owner, or an admin, is offered Rename and Delete. */

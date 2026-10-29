@@ -163,4 +163,12 @@ describe('BoardListComponent', () => {
     expect(text(1)).toContain('Delete');
     expect(text(1)).toContain('Rename');
   });
+
+  it('F1 - an admin sees no "shared with you" badge on boards merely visible to them', () => {
+    auth.username.set('carol');
+    auth.isAdmin.set(true);
+    const { text } = loadedShared();
+    expect(text(0)).not.toContain('shared with you');
+    expect(text(1)).not.toContain('shared with you');
+  });
 });
