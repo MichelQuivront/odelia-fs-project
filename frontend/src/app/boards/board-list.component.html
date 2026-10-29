@@ -40,7 +40,7 @@
               <a class="board-name" [routerLink]="['/boards', board.id]">
                 {{ board.name }}
               </a>
-              @if (!isOwner(board)) {
+              @if (isShared(board)) {
                 <span class="badge-shared">shared with you</span>
               }
               <span class="meta">
