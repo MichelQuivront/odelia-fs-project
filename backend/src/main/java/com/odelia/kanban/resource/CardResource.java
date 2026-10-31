@@ -36,10 +36,10 @@ import java.util.List;
  * Angular CDK drag-and-drop board calls whenever a card is dropped - either
  * reordered inside its column or moved to another one.</p>
  *
- * <p>Like columns, a card inherits its owner from the board it ultimately
- * belongs to, so every endpoint goes through {@link BoardAccess}. {@code /move}
- * checks both ends: you cannot drop one of your cards onto someone else's
- * board.</p>
+ * <p>Like columns, a card inherits its access rules from the board it
+ * ultimately belongs to (owner, members, admins), so every endpoint goes
+ * through {@link BoardAccess}. {@code /move} checks both ends: you cannot drop
+ * a card onto a board you do not collaborate on.</p>
  */
 @Path("/cards")
 @RequestScoped
@@ -118,7 +118,7 @@ public class CardResource {
         return moved;
     }
 
-    /** Loads a card on a board the caller owns: 404 if it is gone, 403 if the board is not theirs. */
+    /** Loads a card of a board the caller collaborates on: 404 if it is gone, 403 otherwise. */
     private Card accessibleCard(long id) {
         Card card = cards.findById(id).orElseThrow(() -> notFound(id));
         access.requireCardAccess(card);

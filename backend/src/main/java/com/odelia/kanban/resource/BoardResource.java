@@ -2,7 +2,9 @@ package com.odelia.kanban.resource;
 
 import com.odelia.kanban.entity.Board;
 import com.odelia.kanban.entity.BoardList;
+import com.odelia.kanban.entity.BoardMember;
 import com.odelia.kanban.repository.BoardListRepository;
+import com.odelia.kanban.repository.BoardMemberRepository;
 import com.odelia.kanban.repository.BoardRepository;
 import com.odelia.kanban.repository.CardRepository;
 import com.odelia.kanban.security.BoardAccess;
@@ -11,7 +13,9 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -29,16 +33,28 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * CRUD over boards, plus the lists (columns) they contain.
+ * CRUD over boards, the lists (columns) they contain, and their members.
  *
  * <p>Every endpoint needs a valid Keycloak token: {@code @RolesAllowed}
  * turns an anonymous call into a 401 and a token without the {@code user} role
- * into a 403. On top of that a board belongs to the person who created it - the
- * {@code preferred_username} from the JWT - so the listing is filtered and the
- * per-board endpoints go through {@link BoardAccess}.</p>
+ * into a 403. On top of that, {@link BoardAccess} decides per board:
+ * collaborator actions (read, columns, listing members) for the owner, members
+ * and admins; owner-only actions (rename, delete, managing members) for the
+ * owner and admins.</p>
+ *
+ * <p>Owner-only endpoints authorize <em>before</em> they validate their input,
+ * so a member always gets 403 and never learns anything from a 400. That is
+ * why {@link #updateBoard} and {@link #addMember} validate by hand instead of
+ * relying on {@code @Valid}, which would run before the method body.</p>
  */
 @Path("/boards")
 @RequestScoped
@@ -49,6 +65,9 @@ import java.util.List;
 public class BoardResource {
 
     private static final List<String> DEFAULT_LISTS = List.of("To do", "Doing", "Done");
+
+    /** Same bound as {@code BoardMember.username} ({@code @Size(max = 120)}). */
+    private static final int MAX_USERNAME = 120;
 
     @Inject
     CurrentUser currentUser;
@@ -65,16 +84,37 @@ public class BoardResource {
     @Inject
     CardRepository cards;
 
+    @Inject
+    BoardMemberRepository members;
+
+    @Inject
+    Validator validator;
+
     @Context
     UriInfo uriInfo;
 
-    /** The caller's own boards - or every board, for an admin. */
+    /**
+     * R6 - the caller's own boards plus the boards shared with them, each once,
+     * sorted by name; every board, for an admin.
+     */
     @GET
     @Operation(operationId = "getBoards")
     public List<Board> listBoards() {
-        return currentUser.isAdmin()
-                ? boards.findAllSortedByName()
-                : boards.findByOwnerOrderByNameAsc(currentUser.name());
+        if (currentUser.isAdmin()) {
+            return boards.findAllSortedByName();
+        }
+        Map<Long, Board> visible = new LinkedHashMap<>();
+        for (Board owned : boards.findByOwnerOrderByNameAsc(currentUser.name())) {
+            visible.put(owned.getId(), owned);
+        }
+        for (BoardMember membership : members.findByUsername(currentUser.name())) {
+            if (!visible.containsKey(membership.getBoardId())) {
+                boards.findById(membership.getBoardId()).ifPresent(b -> visible.put(b.getId(), b));
+            }
+        }
+        List<Board> result = new ArrayList<>(visible.values());
+        result.sort(Comparator.comparing(Board::getName, String.CASE_INSENSITIVE_ORDER));
+        return result;
     }
 
     @GET
@@ -105,24 +145,37 @@ public class BoardResource {
                        .build();
     }
 
+    /** R8 - owner-only rename: a member gets 403, even with an invalid name. */
     @PUT
     @Path("/{id}")
     @Transactional
-    public Board updateBoard(@PathParam("id") long id, @Valid Board board) {
-        Board existing = accessibleBoard(id);
+    public Board updateBoard(@PathParam("id") long id, Board board) {
+        Board existing = ownedBoard(id); // authorization first
+        if (board == null) {
+            throw badRequest("A board with a name is required");
+        }
         existing.setName(board.getName());
+        // Same constraints as @Valid would check (@NotBlank, @Size on Board.name),
+        // only after authorization. A violation rolls the transaction back.
+        Set<ConstraintViolation<Board>> violations = validator.validate(existing);
+        if (!violations.isEmpty()) {
+            ConstraintViolation<Board> first = violations.iterator().next();
+            throw badRequest(first.getPropertyPath() + " " + first.getMessage());
+        }
         return boards.save(existing);
     }
 
+    /** R8 - owner-only: deletes the board, its columns, their cards and its memberships. */
     @DELETE
     @Path("/{id}")
     @Transactional
     public Response deleteBoard(@PathParam("id") long id) {
-        Board existing = accessibleBoard(id);
+        Board existing = ownedBoard(id);
         for (BoardList column : lists.findByBoardIdOrderByPositionAsc(id)) {
             cards.deleteByListId(column.getId());
         }
         lists.deleteByBoardId(id);
+        members.deleteByBoardId(id);
         boards.delete(existing);
         return Response.noContent().build();
     }
@@ -134,6 +187,7 @@ public class BoardResource {
         return lists.findByBoardIdOrderByPositionAsc(id);
     }
 
+    /** R7 - a member may add columns, like the owner. */
     @POST
     @Path("/{id}/lists")
     @Transactional
@@ -147,14 +201,92 @@ public class BoardResource {
                        .build();
     }
 
-    /** Loads a board the caller is allowed to work on: 404 if it is gone, 403 if it is not theirs. */
+    // ---------------------------------------------------------------- members
+
+    /** R3 - the owner, any member, or an admin may list the members (never includes the owner). */
+    @GET
+    @Path("/{id}/members")
+    public List<BoardMember> listMembers(@PathParam("id") long id) {
+        accessibleBoard(id);
+        return members.findByBoardIdOrderByUsernameAsc(id);
+    }
+
+    /** R2/R5/R10 - owner or admin only; a duplicate or the owner is a 400. */
+    @POST
+    @Path("/{id}/members")
+    @Transactional
+    public Response addMember(@PathParam("id") long id, MemberCommand command) {
+        Board board = ownedBoard(id); // authorization first: a member always gets 403 (R8)
+        if (command == null || command.username() == null || command.username().isBlank()) {
+            throw badRequest("A username is required");
+        }
+        String username = normalize(command.username());
+        if (username.length() > MAX_USERNAME) {
+            throw badRequest("A username is at most " + MAX_USERNAME + " characters");
+        }
+        if (username.equals(board.getOwner())) {
+            throw badRequest(username + " owns this board and cannot be added as a member");
+        }
+        if (members.existsByBoardIdAndUsername(id, username)) {
+            throw badRequest(username + " is already a member of this board");
+        }
+        BoardMember created = members.insert(new BoardMember(id, username));
+        return Response.created(uriInfo.getAbsolutePathBuilder().path(username).build())
+                       .entity(created)
+                       .build();
+    }
+
+    /**
+     * R4/R10 - owner or admin only. Removal takes effect on the removed member's
+     * next request, since {@link BoardAccess} reads membership every time. A
+     * member cannot remove anyone - not even themselves (R8).
+     */
+    @DELETE
+    @Path("/{id}/members/{username}")
+    @Transactional
+    public Response removeMember(@PathParam("id") long id, @PathParam("username") String rawUsername) {
+        Board board = ownedBoard(id);
+        String username = normalize(rawUsername);
+        if (username.equals(board.getOwner())) {
+            throw badRequest(username + " owns this board and cannot be removed");
+        }
+        if (members.deleteByBoardIdAndUsername(id, username) == 0) {
+            throw new WebApplicationException(username + " is not a member of board " + id,
+                                              Response.Status.NOT_FOUND);
+        }
+        return Response.noContent().build();
+    }
+
+    // ---------------------------------------------------------------- helpers
+
+    /** A board the caller may work on (owner, member, admin): 404 if gone, 403 otherwise. */
     private Board accessibleBoard(long id) {
         Board board = boards.findById(id).orElseThrow(() -> notFound(id));
         access.requireBoardAccess(board);
         return board;
     }
 
+    /** A board the caller owns (or admin): 404 if gone, 403 for members and strangers. */
+    private Board ownedBoard(long id) {
+        Board board = boards.findById(id).orElseThrow(() -> notFound(id));
+        access.requireBoardOwnership(board);
+        return board;
+    }
+
     private WebApplicationException notFound(long id) {
         return new WebApplicationException("No board with id " + id, Response.Status.NOT_FOUND);
+    }
+
+    /** Keycloak stores usernames in lower case: "Bob" must match the "bob" token. */
+    private static String normalize(String username) {
+        return username.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private WebApplicationException badRequest(String message) {
+        return new WebApplicationException(
+                Response.status(Response.Status.BAD_REQUEST)
+                        .type(MediaType.APPLICATION_JSON)
+                        .entity(Map.of("error", message))
+                        .build());
     }
 }

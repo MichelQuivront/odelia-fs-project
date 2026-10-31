@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { Board, BoardList, Card } from '../models/board';
+import { Board, BoardList, BoardMember, Card } from '../models/board';
 
 /**
  * Single entry point to the Kanban REST API.
@@ -62,5 +62,17 @@ export class BoardService {
   /** Reorder within a column or move to another one; position is the 0-based target index. */
   moveCard(id: number, targetListId: number, position: number): Observable<Card> {
     return this.http.patch<Card>(`${this.cardsUrl}/${id}/move`, { targetListId, position });
+  }
+
+  getMembers(boardId: number): Observable<BoardMember[]> {
+    return this.http.get<BoardMember[]>(`${this.baseUrl}/${boardId}/members`);
+  }
+
+  addMember(boardId: number, username: string): Observable<BoardMember> {
+    return this.http.post<BoardMember>(`${this.baseUrl}/${boardId}/members`, { username });
+  }
+
+  removeMember(boardId: number, username: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${boardId}/members/${encodeURIComponent(username)}`);
   }
 }

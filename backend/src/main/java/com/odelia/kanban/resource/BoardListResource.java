@@ -33,8 +33,8 @@ import java.util.List;
  * through {@code POST /api/boards/{id}/lists} (see {@link BoardResource}).
  *
  * <p>A column carries no owner of its own, so every endpoint hands it to
- * {@link BoardAccess}, which walks up to the board and checks the caller
- * against its owner.</p>
+ * {@link BoardAccess}, which walks up to the board: its owner, its members
+ * and admins may work on it (exercise 17, R7).</p>
  */
 @Path("/lists")
 @RequestScoped
@@ -104,7 +104,7 @@ public class BoardListResource {
                        .build();
     }
 
-    /** Loads a column on a board the caller owns: 404 if it is gone, 403 if the board is not theirs. */
+    /** Loads a column of a board the caller collaborates on: 404 if it is gone, 403 otherwise. */
     private BoardList accessibleColumn(long id) {
         BoardList column = lists.findById(id).orElseThrow(() -> notFound(id));
         access.requireColumnAccess(column);

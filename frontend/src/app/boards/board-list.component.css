@@ -77,6 +77,14 @@ button.danger {
   text-decoration: underline;
 }
 
+.rename input {
+  flex: 1;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font: inherit;
+}
+
 .meta {
   color: #64748b;
   font-size: 0.85rem;
@@ -91,4 +99,13 @@ button.danger {
   background: #fee2e2;
   border-radius: 6px;
   padding: 0.6rem 0.8rem;
+}
+
+.badge-shared {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #3730a3;
+  white-space: nowrap;
 }
